@@ -1,0 +1,10 @@
+[package]
+name = "ws-async"
+version = "0.1.0"
+authors = ["Matt Hunzinger"]
+edition = "2018"
+
+[lib]
+name = "ws_async"
+
+[dependencies]
