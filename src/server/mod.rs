@@ -11,7 +11,7 @@ pub use factory::WsFactory;
 mod service;
 pub use service::WsService;
 
-pub type UpgradeHandle = JoinHandle<hyper::Result<WebSocket>>;
+type UpgradeHandle = JoinHandle<hyper::Result<WebSocket>>;
 
 pub struct Server {
     rx: Receiver<UpgradeHandle>,

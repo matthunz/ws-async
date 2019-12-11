@@ -2,7 +2,6 @@ use super::{UpgradeHandle, WsService};
 use futures::future;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc::{self, Receiver, Sender};
-
 use tower_service::Service;
 
 pub struct WsFactory {
