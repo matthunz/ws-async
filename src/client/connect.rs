@@ -8,13 +8,20 @@ use tower_service::Service;
 
 type StdError = Box<dyn std::error::Error + Send + Sync>;
 
+#[derive(Debug)]
 pub struct WsConnector<R = GaiResolver> {
     http: HttpConnector<R>,
 }
 
+impl Default for WsConnector {
+    fn default() -> Self {
+        Self::new_with_resolver(GaiResolver::new())
+    }
+}
+
 impl WsConnector {
     pub fn new() -> Self {
-        Self::new_with_resolver(GaiResolver::new())
+        Self::default()
     }
 }
 

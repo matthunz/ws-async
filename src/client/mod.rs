@@ -1,20 +1,26 @@
 use crate::{handshake, WebSocket};
 use hyper::client::conn::Builder;
 use hyper::client::service::Connect;
-use hyper::{Body, Request, Uri, header};
+use hyper::{header, Body, Request, Uri};
 use tower_service::Service;
 
 mod connect;
 pub use connect::WsConnector;
 
-pub struct Client<P> {
+#[derive(Debug)]
+pub struct Client<P = Body> {
     http: Connect<WsConnector, P, Uri>,
 }
 
-impl Client<Body> {
+impl Default for Client {
+    fn default() -> Self {
+        Self::from(Builder::new())
+    }
+}
+
+impl Client {
     pub fn new() -> Self {
-        let http = Connect::new(WsConnector::new(), Builder::new());
-        Self { http }
+        Self::default()
     }
     pub async fn connect(&mut self, uri: Uri) -> hyper::Result<WebSocket> {
         let mut svc = self.http.call(uri).await?;
@@ -44,5 +50,12 @@ impl Client<Body> {
         } else {
             unimplemented!()
         }
+    }
+}
+
+impl<P> From<Builder> for Client<P> {
+    fn from(builder: Builder) -> Self {
+        let http = Connect::new(WsConnector::new(), builder);
+        Self { http }
     }
 }
