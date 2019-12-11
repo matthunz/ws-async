@@ -1,3 +1,5 @@
+pub mod client;
+
 mod frame;
 pub use frame::{Frame, Opcode};
 
