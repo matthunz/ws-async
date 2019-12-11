@@ -1,7 +1,7 @@
 use super::UpgradeHandle;
-use crate::WebSocket;
+use crate::{handshake, WebSocket};
 use futures::TryFutureExt;
-use hyper::{Body, Request, Response};
+use hyper::{header, Body, Request, Response, StatusCode};
 use std::future::Future;
 
 use std::task::{Context, Poll};
@@ -28,16 +28,31 @@ impl Service<Request<Body>> for WsService {
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let handle = tokio::task::spawn(
-            req.into_body()
-                .on_upgrade()
-                .map_ok(WebSocket::from_upgraded),
-        );
         let mut tx = self.tx.clone();
 
         async move {
-            tx.send(handle).await;
-            Ok(Response::new(Body::empty()))
+            if let Some(key) = handshake::get_key(&req) {
+                // TODO don't unwrap
+                let accept = handshake::accept(key).await.unwrap();
+                let res = Response::builder()
+                    .status(StatusCode::SWITCHING_PROTOCOLS)
+                    .header(header::CONNECTION, header::UPGRADE)
+                    .header(header::UPGRADE, "websocket")
+                    .header("Sec-WebSocket-Accept", accept)
+                    .body(Body::empty())
+                    .unwrap();
+
+                let handle = tokio::task::spawn(
+                    req.into_body()
+                        .on_upgrade()
+                        .map_ok(WebSocket::from_upgraded),
+                );
+                tx.send(handle).await;
+
+                Ok(res)
+            } else {
+                unimplemented!()
+            }
         }
     }
 }
