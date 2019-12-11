@@ -1,11 +1,7 @@
 use crate::{handshake, WebSocket};
 use hyper::client::conn::Builder;
 use hyper::client::service::Connect;
-use hyper::header::{self, HeaderValue};
-use hyper::{Body, Request, Uri};
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
-use std::convert::TryFrom;
+use hyper::{Body, Request, Uri, header};
 use tower_service::Service;
 
 mod connect;
@@ -24,22 +20,7 @@ impl Client<Body> {
         let mut svc = self.http.call(uri).await?;
 
         // TODO don't unwrap
-        let key = tokio::task::spawn_blocking(|| {
-            let mut rng = thread_rng();
-            let chars: String = std::iter::repeat(())
-                .map(|()| rng.sample(Alphanumeric))
-                .take(16)
-                .collect();
-
-            let encoded = base64::encode(&chars);
-            match HeaderValue::try_from(encoded) {
-                Ok(hv) => hv,
-                Err(_) => unreachable!(),
-            }
-        })
-        .await
-        .unwrap();
-
+        let key = handshake::generate().await.unwrap();
         let req = Request::builder()
             .header(header::CONNECTION, header::UPGRADE)
             .header(header::UPGRADE, "websocket")
