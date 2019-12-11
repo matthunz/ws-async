@@ -2,6 +2,9 @@
 
 pub mod handshake;
 
+mod payload;
+pub use payload::Payload;
+
 mod socket;
 pub use socket::WebSocket;
 
