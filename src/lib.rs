@@ -1,5 +1,8 @@
 #![feature(type_alias_impl_trait)]
 
+mod frame;
+pub use frame::{Frame, Opcode};
+
 pub mod handshake;
 
 mod payload;
