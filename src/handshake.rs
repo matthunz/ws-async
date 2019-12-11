@@ -1,5 +1,5 @@
 use hyper::header::HeaderValue;
-use hyper::Request;
+use hyper::{Request, Response};
 use sha1::{Digest, Sha1};
 use std::convert::TryFrom;
 use tokio::task::{self, JoinError};
@@ -23,4 +23,8 @@ pub async fn accept(key: &HeaderValue) -> Result<HeaderValue, JoinError> {
 
 pub fn get_key<B>(req: &Request<B>) -> Option<&HeaderValue> {
     req.headers().get("Sec-WebSocket-Key")
+}
+
+pub fn get_accept<B>(res: &Response<B>) -> Option<&HeaderValue> {
+    res.headers().get("Sec-WebSocket-Accept")
 }

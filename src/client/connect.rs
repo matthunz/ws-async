@@ -1,9 +1,7 @@
 use hyper::client::connect::dns::{GaiResolver, Name};
 use hyper::client::HttpConnector;
 use hyper::Uri;
-use std::future::Future;
 use std::net::IpAddr;
-use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::net::TcpStream;
 use tower_service::Service;
@@ -50,7 +48,7 @@ where
     type Future = <HttpConnector<R> as Service<Uri>>::Future;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
+        self.http.poll_ready(cx)
     }
 
     fn call(&mut self, dst: Uri) -> Self::Future {
