@@ -3,7 +3,6 @@ use crate::{handshake, WebSocket};
 use futures::TryFutureExt;
 use hyper::{header, Body, Request, Response, StatusCode};
 use std::future::Future;
-
 use std::task::{Context, Poll};
 use tokio::sync::mpsc::Sender;
 use tower_service::Service;

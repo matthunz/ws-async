@@ -1,3 +1,5 @@
+use futures::TryStreamExt;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:8080".parse().unwrap();
@@ -5,9 +7,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while let Some(ref mut ws) = server.next_socket().await? {
         while let Some(ref mut frame) = ws.next_frame().await? {
-            while let Some(bytes) = frame.next_bytes().await? {
-                dbg!(bytes);
-            }
+            let payload = frame.stream().try_collect().await?;
+            dbg!(payload);
         }
     }
 

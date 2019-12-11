@@ -1,7 +1,6 @@
 use hyper::header::HeaderValue;
 use hyper::Request;
 use tokio::task::{self, JoinError};
-
 use sha1::{Digest, Sha1};
 use std::convert::TryFrom;
 

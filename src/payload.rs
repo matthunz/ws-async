@@ -1,5 +1,6 @@
 use crate::socket::Shared;
 use bytes::Bytes;
+use futures::Stream;
 use hyper::upgrade::Upgraded;
 use std::io;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -35,6 +36,13 @@ where
                 } else {
                     socket.next_bytes().await
                 }
+            }
+        }
+    }
+    pub fn stream(&mut self) -> impl Stream<Item = io::Result<Bytes>> + '_ {
+        async_stream::try_stream! {
+            while let Some(bytes) = self.next_bytes().await? {
+                yield bytes;
             }
         }
     }
