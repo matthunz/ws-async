@@ -6,19 +6,22 @@ use sha1::{Digest, Sha1};
 use std::convert::TryFrom;
 use tokio::task::{self, JoinError};
 
+unsafe fn encode_value(bytes: &[u8]) -> HeaderValue {
+    match HeaderValue::try_from(base64::encode(&bytes)) {
+        Ok(hv) => hv,
+        Err(_) => unreachable!(),
+    }
+}
+
 pub async fn generate() -> Result<HeaderValue, JoinError> {
-    tokio::task::spawn_blocking(|| {
+    task::spawn_blocking(|| {
         let mut rng = thread_rng();
         let chars: String = std::iter::repeat(())
             .map(|()| rng.sample(Alphanumeric))
             .take(16)
             .collect();
 
-        let encoded = base64::encode(&chars);
-        match HeaderValue::try_from(encoded) {
-            Ok(hv) => hv,
-            Err(_) => unreachable!(),
-        }
+        unsafe { encode_value(chars.as_bytes())}
     })
     .await
 }
@@ -30,12 +33,8 @@ pub async fn accept(key: &HeaderValue) -> Result<HeaderValue, JoinError> {
     task::spawn_blocking(move || {
         let mut sha1 = Sha1::default();
         sha1.input(bytes);
-        let encoded = base64::encode(&sha1.result());
 
-        match HeaderValue::try_from(encoded) {
-            Ok(hv) => hv,
-            Err(_) => unreachable!(),
-        }
+        unsafe { encode_value(&sha1.result())}
     })
     .await
 }
