@@ -6,6 +6,9 @@ use sha1::{Digest, Sha1};
 use std::convert::TryFrom;
 use tokio::task::{self, JoinError};
 
+pub const SEC_WEBSOCKET_ACCEPT: &str = "Sec-WebSocket-Accept";
+pub const SEC_WEBSOCKET_KEY: &str = "Sec-WebSocket-Key";
+
 unsafe fn encode_value(bytes: &[u8]) -> HeaderValue {
     match HeaderValue::try_from(base64::encode(&bytes)) {
         Ok(hv) => hv,
@@ -21,7 +24,7 @@ pub async fn generate() -> Result<HeaderValue, JoinError> {
             .take(16)
             .collect();
 
-        unsafe { encode_value(chars.as_bytes())}
+        unsafe { encode_value(chars.as_bytes()) }
     })
     .await
 }
@@ -34,15 +37,7 @@ pub async fn accept(key: &HeaderValue) -> Result<HeaderValue, JoinError> {
         let mut sha1 = Sha1::default();
         sha1.input(bytes);
 
-        unsafe { encode_value(&sha1.result())}
+        unsafe { encode_value(&sha1.result()) }
     })
     .await
-}
-
-pub fn get_key<B>(req: &Request<B>) -> Option<&HeaderValue> {
-    req.headers().get("Sec-WebSocket-Key")
-}
-
-pub fn get_accept<B>(res: &Response<B>) -> Option<&HeaderValue> {
-    res.headers().get("Sec-WebSocket-Accept")
 }

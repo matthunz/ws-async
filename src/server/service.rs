@@ -31,14 +31,14 @@ impl Service<Request<Body>> for WsService {
         let mut tx = self.tx.clone();
 
         Box::pin(async move {
-            if let Some(key) = handshake::get_key(&req) {
+            if let Some(key) = req.headers().get(handshake::SEC_WEBSOCKET_KEY) {
                 // TODO don't unwrap
                 let accept = handshake::accept(key).await.unwrap();
                 let res = Response::builder()
                     .status(StatusCode::SWITCHING_PROTOCOLS)
                     .header(header::CONNECTION, header::UPGRADE)
                     .header(header::UPGRADE, "websocket")
-                    .header("Sec-WebSocket-Accept", accept)
+                    .header(handshake::SEC_WEBSOCKET_ACCEPT, accept)
                     .body(Body::empty())
                     .unwrap();
 

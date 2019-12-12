@@ -57,12 +57,12 @@ impl Service<Uri> for Client {
             let req = Request::builder()
                 .header(header::CONNECTION, header::UPGRADE)
                 .header(header::UPGRADE, "websocket")
-                .header("Sec-WebSocket-Key", &key)
+                .header(handshake::SEC_WEBSOCKET_KEY, &key)
                 .body(Body::empty())
                 .unwrap();
 
             let res = svc.call(req).await?;
-            if let Some(accept) = handshake::get_accept(&res) {
+            if let Some(accept) = res.headers().get(handshake::SEC_WEBSOCKET_ACCEPT) {
                 // TODO don't unwrap
                 let clone = handshake::accept(&key).await.unwrap();
 
