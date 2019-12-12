@@ -1,3 +1,5 @@
+#![feature(const_fn)]
+
 pub mod client;
 pub use client::Client;
 
