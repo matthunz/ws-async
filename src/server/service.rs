@@ -1,5 +1,5 @@
 use super::UpgradeHandle;
-use crate::{handshake, WebSocket};
+use crate::{handshake, Error, Result, WebSocket};
 use futures::TryFutureExt;
 use hyper::{header, Body, Request, Response, StatusCode};
 use std::future::Future;
@@ -20,10 +20,10 @@ impl WsService {
 
 impl Service<Request<Body>> for WsService {
     type Response = Response<Body>;
-    type Error = hyper::Error;
-    type Future = Pin<Box<dyn Future<Output = hyper::Result<Self::Response>> + Send + Sync>>;
+    type Error = Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send + Sync>>;
 
-    fn poll_ready(&mut self, _cx: &mut Context) -> Poll<hyper::Result<()>> {
+    fn poll_ready(&mut self, _cx: &mut Context) -> Poll<Result<()>> {
         Ok(()).into()
     }
 

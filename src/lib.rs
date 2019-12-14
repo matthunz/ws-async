@@ -3,6 +3,9 @@
 pub mod client;
 pub use client::Client;
 
+mod error;
+pub use error::{Error, Result};
+
 mod frame;
 pub use frame::{Frame, Opcode};
 
