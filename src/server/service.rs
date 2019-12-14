@@ -42,11 +42,7 @@ impl Service<Request<Body>> for WsService {
                     .body(Body::empty())
                     .unwrap();
 
-                let handle = tokio::task::spawn(
-                    req.into_body()
-                        .on_upgrade()
-                        .map_ok(WebSocket::from_upgraded),
-                );
+                let handle = tokio::task::spawn(WebSocket::upgrade(req.into_body()));
                 tx.send(handle).await;
 
                 Ok(res)

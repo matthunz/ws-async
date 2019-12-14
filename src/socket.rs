@@ -69,3 +69,9 @@ where
         Ok(Some(Frame::binary(payload)))
     }
 }
+
+impl WebSocket {
+    pub async fn upgrade(body: hyper::Body) -> hyper::Result<Self> {
+        body.on_upgrade().await.map(Self::from_upgraded)
+    }
+}

@@ -67,10 +67,7 @@ impl Service<Uri> for Client {
                 let clone = handshake::accept(&key).await.unwrap();
 
                 if accept == &clone {
-                    res.into_body()
-                        .on_upgrade()
-                        .await
-                        .map(WebSocket::from_upgraded)
+                    WebSocket::upgrade(res.into_body()).await
                 } else {
                     unimplemented!()
                 }

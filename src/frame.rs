@@ -22,7 +22,7 @@ impl Opcode {
             Close => 8,
             Ping => 9,
             Pong => 10,
-            Reserved(op) => op,
+            Reserved(op) => *op,
         }
     }
 }
