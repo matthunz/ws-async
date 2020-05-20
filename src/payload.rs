@@ -6,6 +6,7 @@ use std::io;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
+#[derive(Debug)]
 enum Kind<T> {
     Once(Option<Bytes>),
     Shared {
@@ -14,6 +15,7 @@ enum Kind<T> {
     },
 }
 
+#[derive(Debug)]
 pub struct Payload<T = Upgraded> {
     kind: Kind<T>,
 }
@@ -32,7 +34,7 @@ where
         match &mut self.kind {
             Kind::Once(once) => Ok(once.take()),
             Kind::Shared { socket, pending } => {
-                if let Some(res) = pending.recv().await {
+                if let Ok(res) = pending.try_recv() {
                     Ok(Some(res?))
                 } else {
                     socket.next_bytes().await

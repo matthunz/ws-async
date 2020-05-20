@@ -8,7 +8,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut payload = frame.into_payload();
 
             while let Some(bytes) = payload.next_bytes().await? {
-                dbg!(bytes);
+                let s = std::str::from_utf8(&bytes)?;
+                dbg!(s);
             }
         }
     }
