@@ -13,29 +13,19 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(cause) = self.cause() {
-            write!(f, "{}: {}", self.description(), cause)
-        } else {
-            f.write_str(self.description())
-        }
-    }
-}
-
-impl StdError for Error {
-    fn description(&self) -> &str {
-        match self {
+        let description = match self {
             Error::Http(_) => "HTTP handshake error",
             Error::Io(_) => "IO error",
-        }
-    }
-
-    fn cause(&self) -> Option<&dyn StdError> {
-        match self {
-            Error::Http(http) => Some(http),
-            Error::Io(io) => Some(io),
+        };
+        if let Some(cause) = self.source() {
+            write!(f, "{}: {}", description, cause)
+        } else {
+            f.write_str(description)
         }
     }
 }
+
+impl StdError for Error {}
 
 impl From<hyper::Error> for Error {
     fn from(err: hyper::Error) -> Self {

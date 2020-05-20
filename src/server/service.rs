@@ -1,6 +1,5 @@
 use super::UpgradeHandle;
 use crate::{handshake, Error, Result, WebSocket};
-use futures::TryFutureExt;
 use hyper::{header, Body, Request, Response, StatusCode};
 use std::future::Future;
 use std::pin::Pin;
@@ -33,7 +32,7 @@ impl Service<Request<Body>> for WsService {
         Box::pin(async move {
             if let Some(key) = req.headers().get(handshake::SEC_WEBSOCKET_KEY) {
                 // TODO don't unwrap
-                let accept = handshake::accept(key).await.unwrap();
+                let accept = handshake::accept(key);
                 let res = Response::builder()
                     .status(StatusCode::SWITCHING_PROTOCOLS)
                     .header(header::CONNECTION, header::UPGRADE)
@@ -43,7 +42,9 @@ impl Service<Request<Body>> for WsService {
                     .unwrap();
 
                 let handle = tokio::task::spawn(WebSocket::upgrade(req.into_body()));
-                tx.send(handle).await;
+                if let Err(_) = tx.send(handle).await {
+                    todo!()
+                }
 
                 Ok(res)
             } else {

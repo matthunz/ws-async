@@ -53,7 +53,7 @@ impl Service<Uri> for Client {
             let mut svc = svc_fut.await?;
 
             // TODO don't unwrap
-            let key = handshake::generate().await.unwrap();
+            let key = handshake::generate();
             let req = Request::builder()
                 .header(header::CONNECTION, header::UPGRADE)
                 .header(header::UPGRADE, "websocket")
@@ -64,7 +64,7 @@ impl Service<Uri> for Client {
             let res = svc.call(req).await?;
             if let Some(accept) = res.headers().get(handshake::SEC_WEBSOCKET_ACCEPT) {
                 // TODO don't unwrap
-                let clone = handshake::accept(&key).await.unwrap();
+                let clone = handshake::accept(&key);
 
                 if accept == &clone {
                     WebSocket::upgrade(res.into_body()).await

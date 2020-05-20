@@ -5,13 +5,14 @@ use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::Mutex;
 
 #[pin_project::pin_project]
 struct Inner<T> {
     transport: T,
     read_buf: BytesMut,
-    pending: Option<mpsc::UnboundedSender<std::io::Result<Bytes>>>,
+    pending: Option<UnboundedSender<io::Result<Bytes>>>,
 }
 
 pub(crate) struct Shared<T> {
