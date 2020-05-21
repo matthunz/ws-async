@@ -1,5 +1,7 @@
-use crate::Payload;
 pub use ws_frame::Opcode;
+
+mod payload;
+pub use payload::Payload;
 
 #[derive(Debug)]
 pub struct Frame<P = Payload> {
@@ -9,24 +11,34 @@ pub struct Frame<P = Payload> {
 }
 
 impl<P> Frame<P> {
-    pub fn new(op: Opcode, rsv: [bool; 3], payload: P) -> Self {
+    pub const fn new(op: Opcode, rsv: [bool; 3], payload: P) -> Self {
         Self { op, rsv, payload }
     }
-    pub fn binary(payload: P) -> Self {
+
+    pub const fn binary(payload: P) -> Self {
         Self::new_default(Opcode::Binary, payload)
     }
-    fn new_default(op: Opcode, payload: P) -> Self {
+
+    const fn new_default(op: Opcode, payload: P) -> Self {
         Self::new(op, [false; 3], payload)
     }
+
+    #[inline]
     pub fn opcode(&self) -> &Opcode {
         &self.op
     }
+
+    #[inline]
     pub fn rsv(&self) -> &[bool; 3] {
         &self.rsv
     }
+
+    #[inline]
     pub fn payload(&self) -> &P {
         &self.payload
     }
+
+    #[inline]
     pub fn into_payload(self) -> P {
         self.payload
     }

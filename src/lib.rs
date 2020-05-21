@@ -7,12 +7,9 @@ mod error;
 pub use error::{Error, Result};
 
 mod frame;
-pub use frame::{Frame, Opcode};
+pub use frame::{Frame, Opcode, Payload};
 
 pub mod handshake;
-
-mod payload;
-pub use payload::Payload;
 
 mod socket;
 pub use socket::WebSocket;
