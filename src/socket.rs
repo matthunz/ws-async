@@ -10,64 +10,23 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
 
 #[derive(Debug)]
-struct Pending {
+pub(crate) struct Pending {
     sender: UnboundedSender<io::Result<Bytes>>,
-    remaining: usize,
-    mask: Option<[u8; 4]>,
+    pub(crate) remaining: usize,
+    pub(crate) mask: Option<[u8; 4]>,
 }
 
 #[pin_project::pin_project]
 #[derive(Debug)]
-struct Inner<T> {
-    transport: T,
-    read_buf: BytesMut,
-    pending: Option<Pending>,
+pub(crate) struct Inner<T> {
+    pub(crate) transport: T,
+    pub(crate) read_buf: BytesMut,
+    pub(crate) pending: Option<Pending>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Shared<T> {
-    inner: Arc<Mutex<Inner<T>>>,
-}
-
-impl<T> Shared<T>
-where
-    T: AsyncRead + AsyncWrite + Unpin,
-{
-    pub async fn next_bytes(&mut self) -> io::Result<Option<Bytes>> {
-        let mut g = self.inner.lock().await;
-        let mut inner = Pin::new(&mut *g).project();
-        let pending = inner
-            .pending
-            .as_mut()
-            .expect("called `Payload::next_bytes` after `None`");
-
-        if pending.remaining > 0 {
-            let mut len = inner.read_buf.len();
-            if len == 0 {
-                loop {
-                    let used = inner.transport.read_buf(&mut inner.read_buf).await?;
-                    if used != 0 {
-                        len = used;
-                        break;
-                    }
-                }
-            }
-
-            let mut bytes = inner.read_buf.split_to(len.min(pending.remaining));
-            pending.remaining = pending.remaining.saturating_sub(len);
-
-            if let Some(mask) = pending.mask {
-                for (i, b) in bytes.iter_mut().enumerate() {
-                    *b ^= mask[i % 4];
-                }
-            }
-
-            Ok(Some(bytes.freeze()))
-        } else {
-            *inner.pending = None;
-            Ok(None)
-        }
-    }
+    pub(crate) inner: Arc<Mutex<Inner<T>>>,
 }
 
 pub struct WebSocket<T = Upgraded> {

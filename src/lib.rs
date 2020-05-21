@@ -1,4 +1,4 @@
-#![feature(const_fn)]
+#![feature(const_fn, type_alias_impl_trait)]
 
 pub mod client;
 pub use client::Client;

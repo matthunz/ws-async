@@ -1,3 +1,5 @@
+use tokio::stream::StreamExt;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = ws_async::Client::new();
@@ -8,8 +10,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Some(frame) = ws.next_frame().await? {
         let mut payload = frame.into_payload();
 
-        while let Some(bytes) = payload.next_bytes().await? {
-            dbg!(bytes);
+        while let Some(res) = payload.next().await {
+            dbg!(res?);
         }
     }
 
