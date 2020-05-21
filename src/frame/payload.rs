@@ -1,7 +1,7 @@
 use crate::socket::Shared;
 use bytes::Bytes;
 use futures::ready;
-
+use std::fmt;
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -27,6 +27,12 @@ where
             let mut inner = ready!(self.shared.poll_lock(cx));
             inner.poll_bytes(cx)
         }
+    }
+}
+
+impl<T> fmt::Debug for Payload<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Payload").finish()
     }
 }
 
