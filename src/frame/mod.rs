@@ -4,7 +4,7 @@ mod payload;
 pub use payload::Payload;
 
 #[derive(Debug)]
-pub struct Frame<P = Payload> {
+pub struct Frame<P> {
     op: Opcode,
     rsv: [bool; 3],
     payload: P,

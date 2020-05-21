@@ -1,7 +1,7 @@
 use crate::socket::Shared;
 use bytes::Bytes;
 use futures::ready;
-use hyper::upgrade::Upgraded;
+
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -9,7 +9,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::stream::Stream;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
-pub struct Payload<T = Upgraded> {
+pub struct Payload<T> {
     shared: Shared<T>,
     pending: UnboundedReceiver<io::Result<Bytes>>,
 }

@@ -1,7 +1,6 @@
 use crate::{Frame, Payload};
 use bytes::{Buf, Bytes, BytesMut};
 use futures::{pin_mut, ready};
-use hyper::upgrade::Upgraded;
 use std::future::Future;
 use std::io;
 use std::pin::Pin;
@@ -85,7 +84,7 @@ where
     }
 }
 
-pub struct WebSocket<T = Upgraded> {
+pub struct WebSocket<T> {
     shared: Shared<T>,
 }
 
@@ -143,14 +142,5 @@ where
                 break Poll::Ready(Some(Ok(Frame::new(head.op, head.rsv, payload))));
             }
         }
-    }
-}
-
-impl WebSocket {
-    pub async fn upgrade(body: hyper::Body) -> hyper::Result<Self> {
-        body.on_upgrade()
-            .await
-            .map(Self::from_upgraded)
-            .map_err(Into::into)
     }
 }
