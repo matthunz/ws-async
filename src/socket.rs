@@ -1,15 +1,17 @@
-use crate::frame::Frame;
-use crate::Payload;
+use crate::{Frame, Payload};
 use bytes::{Buf, Bytes, BytesMut};
+use futures::{pin_mut, ready};
 use hyper::upgrade::Upgraded;
+use std::future::Future;
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
+use std::task::{Context, Poll};
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::stream::Stream;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 
-#[derive(Debug)]
 pub(crate) struct Pending {
     sender: UnboundedSender<io::Result<Bytes>>,
     pub(crate) remaining: usize,
@@ -17,16 +19,74 @@ pub(crate) struct Pending {
 }
 
 #[pin_project::pin_project]
-#[derive(Debug)]
 pub(crate) struct Inner<T> {
     pub(crate) transport: T,
     pub(crate) read_buf: BytesMut,
     pub(crate) pending: Option<Pending>,
 }
 
-#[derive(Debug)]
+impl<T> Inner<T>
+where
+    T: AsyncRead + AsyncWrite + Unpin,
+{
+    pub fn poll_bytes(&mut self, cx: &mut Context) -> Poll<Option<io::Result<Bytes>>> {
+        if let Some(pending) = &mut self.pending {
+            if pending.remaining > 0 {
+                let mut len = self.read_buf.len();
+                if len == 0 {
+                    loop {
+                        let transport = &mut self.transport;
+                        pin_mut!(transport);
+                        match transport.poll_read_buf(cx, &mut self.read_buf) {
+                            Poll::Ready(Ok(used)) if used != 0 => {
+                                len = used;
+                                break;
+                            }
+                            Poll::Ready(Err(e)) => return Poll::Ready(Some(Err(e))),
+                            Poll::Pending => return Poll::Pending,
+                            _ => {}
+                        }
+                    }
+                }
+
+                let mut bytes = self.read_buf.split_to(len.min(pending.remaining));
+                pending.remaining = pending.remaining.saturating_sub(len);
+
+                if let Some(mask) = pending.mask {
+                    for (i, b) in bytes.iter_mut().enumerate() {
+                        *b ^= mask[i % 4];
+                    }
+                }
+
+                return Poll::Ready(Some(Ok(bytes.freeze())));
+            } else {
+                self.pending = None;
+            }
+        }
+
+        Poll::Ready(None)
+    }
+
+    fn poll_read_buf(&mut self, cx: &mut Context) -> Poll<io::Result<usize>> {
+        let transport = &mut self.transport;
+        pin_mut!(transport);
+        transport.poll_read_buf(cx, &mut self.read_buf)
+    }
+}
+
 pub(crate) struct Shared<T> {
     pub(crate) inner: Arc<Mutex<Inner<T>>>,
+}
+
+impl<T> Shared<T>
+where
+    T: AsyncRead + AsyncWrite + Unpin,
+{
+    pub fn poll_lock(&self, cx: &mut Context) -> Poll<MutexGuard<Inner<T>>> {
+        let fut = self.inner.lock();
+        pin_mut!(fut);
+        fut.poll(cx)
+    }
 }
 
 pub struct WebSocket<T = Upgraded> {
@@ -48,35 +108,43 @@ where
             },
         }
     }
+}
 
-    pub async fn next_frame(&mut self) -> io::Result<Option<Frame<Payload<T>>>> {
-        let mut g = self.shared.inner.lock().await;
-        let mut inner = Pin::new(&mut *g).project();
+impl<T> Stream for WebSocket<T>
+where
+    T: AsyncRead + AsyncWrite + Unpin,
+{
+    type Item = io::Result<Frame<Payload<T>>>;
 
-        if let Some(_pending) = inner.pending {
-            todo!()
-        } else {
-            let mut f = ws_frame::Frame::empty();
-            loop {
-                let end = inner.transport.read_buf(&mut inner.read_buf).await?;
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut inner = ready!(self.shared.poll_lock(cx));
 
-                if let ws_frame::Status::Complete(used) = &f.decode(&inner.read_buf[..end]) {
-                    // advance buf before a panic
-                    inner.read_buf.advance(*used);
+        while let Some(res) = ready!(inner.poll_bytes(cx)) {
+            if let Some(pending) = &mut inner.pending {
+                pending.sender.send(res).unwrap();
+            }
+        }
 
-                    let head = f.head.as_ref().unwrap();
-                    let (sender, payload) = Payload::shared(Shared {
-                        inner: self.shared.inner.clone(),
-                    });
+        let mut f = ws_frame::Frame::empty();
+        loop {
+            let end = ready!(inner.poll_read_buf(cx))?;
 
-                    *inner.pending = Some(Pending {
-                        sender,
-                        remaining: f.payload_len.unwrap() as usize,
-                        mask: f.mask,
-                    });
+            if let ws_frame::Status::Complete(used) = &f.decode(&inner.read_buf[..end]) {
+                // advance buf before a panic
+                inner.read_buf.advance(*used);
 
-                    break Ok(Some(Frame::new(head.op, head.rsv, payload)));
-                }
+                let head = f.head.as_ref().unwrap();
+                let (sender, payload) = Payload::shared(Shared {
+                    inner: self.shared.inner.clone(),
+                });
+
+                inner.pending = Some(Pending {
+                    sender,
+                    remaining: f.payload_len.unwrap() as usize,
+                    mask: f.mask,
+                });
+
+                break Poll::Ready(Some(Ok(Frame::new(head.op, head.rsv, payload))));
             }
         }
     }
