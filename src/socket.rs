@@ -35,13 +35,7 @@ where
                 while len == 0 {
                     let transport = &mut self.transport;
                     pin_mut!(transport);
-                    match transport.poll_read_buf(cx, &mut self.read_buf) {
-                        Poll::Ready(Ok(used)) => {
-                            len = used;
-                        }
-                        Poll::Ready(Err(e)) => return Poll::Ready(Some(Err(e))),
-                        Poll::Pending => return Poll::Pending,
-                    }
+                    len = ready!(transport.poll_read_buf(cx, &mut self.read_buf))?;
                 }
 
                 let mut bytes = self.read_buf.split_to(len.min(pending.remaining));
