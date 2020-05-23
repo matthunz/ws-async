@@ -7,14 +7,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
-    
     Io(io::Error),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let description = match self {
-          
             Error::Io(_) => "IO error",
         };
         if let Some(cause) = self.source() {
@@ -26,8 +24,6 @@ impl fmt::Display for Error {
 }
 
 impl StdError for Error {}
-
-
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {

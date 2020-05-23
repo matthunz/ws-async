@@ -1,12 +1,12 @@
 use crate::socket::Shared;
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use futures::ready;
 use std::fmt;
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::stream::Stream;
+use tokio::stream::{Stream, StreamExt};
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 pub struct Payload<T> {
@@ -40,6 +40,15 @@ impl<T> Payload<T>
 where
     T: AsyncRead + AsyncWrite + Unpin,
 {
+    pub async fn bytes(&mut self) -> io::Result<Bytes> {
+        let mut buf = BytesMut::new();
+        while let Some(res) = self.next().await {
+            let bytes = res?;
+            buf.put(bytes);
+        }
+        Ok(buf.freeze())
+    }
+
     #[inline]
     pub(crate) fn shared(shared: Shared<T>) -> (UnboundedSender<io::Result<Bytes>>, Self) {
         let (tx, pending) = mpsc::unbounded_channel();
