@@ -1,8 +1,8 @@
 mod error;
 pub use error::{Error, Result};
 
-mod frame;
-pub use frame::{Frame, Opcode, Payload};
+pub mod frame;
+//pub use frame::{Frame, Opcode, Payload, Masked};
 
 pub mod handshake;
 

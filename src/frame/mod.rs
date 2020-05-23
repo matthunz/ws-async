@@ -19,6 +19,10 @@ impl<P> Frame<P> {
         Self::new_default(Opcode::Binary, payload)
     }
 
+    pub const fn text(payload: P) -> Self {
+        Self::new_default(Opcode::Text, payload)
+    }
+
     const fn new_default(op: Opcode, payload: P) -> Self {
         Self::new(op, [false; 3], payload)
     }
@@ -41,5 +45,17 @@ impl<P> Frame<P> {
     #[inline]
     pub fn into_payload(self) -> P {
         self.payload
+    }
+}
+
+#[derive(Debug)]
+pub struct Masked<P> {
+    pub frame: Frame<P>,
+    pub mask: Option<u32>,
+}
+
+impl<P> Masked<P> {
+    pub const fn new(frame: Frame<P>, mask: Option<u32>) -> Self {
+        Self { frame, mask }
     }
 }

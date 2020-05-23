@@ -1,6 +1,6 @@
-use crate::{Frame, Payload};
-use bytes::{Buf, Bytes, BytesMut};
-use futures::{pin_mut, ready};
+use crate::frame::{Frame, Masked, Opcode, Payload};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use futures::{pin_mut, ready, Sink, SinkExt};
 use std::future::Future;
 use std::io;
 use std::pin::Pin;
@@ -17,7 +17,6 @@ pub(crate) struct Pending {
     pub(crate) mask: Option<[u8; 4]>,
 }
 
-#[pin_project::pin_project]
 pub(crate) struct Inner<T> {
     pub(crate) transport: T,
     pub(crate) read_buf: BytesMut,
@@ -80,6 +79,7 @@ where
 
 pub struct WebSocket<T> {
     shared: Shared<T>,
+    write_buf: BytesMut,
 }
 
 impl<T> WebSocket<T>
@@ -95,7 +95,78 @@ where
                     pending: None,
                 })),
             },
+            write_buf: BytesMut::new(),
         }
+    }
+
+    pub async fn send_frame<B>(&mut self, frame: Frame<B>) -> io::Result<()>
+    where
+        B: Buf,
+    {
+        self.send(Masked::new(frame, None)).await
+    }
+}
+
+impl<T, B> Sink<Masked<B>> for WebSocket<T>
+where
+    T: AsyncRead + AsyncWrite + Unpin,
+    B: Buf,
+{
+    type Error = io::Error;
+
+    fn start_send(mut self: Pin<&mut Self>, masked: Masked<B>) -> Result<(), Self::Error> {
+        let op = match masked.frame.opcode() {
+            Opcode::Continue => 0,
+            Opcode::Text => 1,
+            Opcode::Binary => 2,
+            _ => todo!(),
+        };
+        self.write_buf.put_u8(1 << 7 | op);
+
+        let payload = masked.frame.into_payload();
+
+        let mask = 0;
+        let mut put_second = |payload_len: u8| self.write_buf.put_u8(mask << 7 | payload_len);
+        let len = payload.bytes().len();
+        if len > 127 {
+            if len > 127 + u32::MAX as usize {
+                put_second(127);
+                self.write_buf.put_u64((len - 127) as _);
+            } else {
+                put_second(126);
+                self.write_buf.put_u32((len - 127) as _);
+            }
+        } else {
+            put_second(len as _);
+        }
+
+        self.write_buf.put(payload);
+
+        Ok(())
+    }
+
+    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let Self {
+            shared,
+            ref mut write_buf,
+        } = &mut *self;
+        let mut inner = ready!(shared.poll_lock(cx));
+
+        while write_buf.len() > 0 {
+            let transport = &mut inner.transport;
+            pin_mut!(transport);
+            ready!(transport.poll_write_buf(cx, write_buf))?;
+        }
+
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        todo!()
     }
 }
 
