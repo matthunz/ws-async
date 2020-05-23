@@ -18,4 +18,4 @@ tower-service = "0.3.0"
 ws-frame = { git = "https://github.com/matthunz/ws-frame" }
 
 [dev-dependencies]
-tokio = { version = "0.2.21", features = ["macros"] }
+tokio = { version = "0.2.21", features = ["dns", "macros", "tcp"] }

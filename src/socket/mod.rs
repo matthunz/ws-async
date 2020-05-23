@@ -13,6 +13,7 @@ mod shared;
 pub(crate) use shared::Shared;
 use shared::{Inner, Pending};
 
+/// A websocket `Sink` and `Stream`.
 pub struct Socket<T> {
     shared: Shared<T>,
     write_buf: BytesMut,
@@ -22,6 +23,19 @@ impl<T> Socket<T>
 where
     T: AsyncRead + AsyncWrite + Unpin,
 {
+    /// Creates a new `Socket` from the previously upgraded connection provided.
+    /// ```
+    /// # async {
+    /// use tokio::net::TcpStream;
+    /// use ws_async::Socket;
+    ///
+    /// let upgraded = TcpStream::connect("127.0.0.1:80").await?;
+    /// // upgrade connection...
+    ///
+    /// let ws = Socket::from_upgraded(upgraded);
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// # };
+    /// ```
     pub fn from_upgraded(upgraded: T) -> Self {
         Self {
             shared: Shared {
@@ -35,6 +49,17 @@ where
         }
     }
 
+    /// Returns a future that sends a `Frame` on the socket to the remote address to which it is connected.
+    /// ```
+    /// use tokio::net::TcpStream;
+    /// use ws_async::Socket;
+    /// use ws_async::frame::Frame;
+    ///
+    /// async fn handle(ws: &mut Socket<TcpStream>) -> std::io::Result<()> {
+    ///     let frame = Frame::text("Hello World!".as_bytes());
+    ///     ws.send_frame(frame).await
+    /// }
+    /// ```
     pub async fn send_frame<B: Buf>(&mut self, frame: Frame<B>) -> io::Result<()> {
         self.send(Raw {
             frame,
