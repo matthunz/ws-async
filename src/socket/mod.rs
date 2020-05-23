@@ -53,7 +53,7 @@ where
     type Error = io::Error;
 
     fn start_send(mut self: Pin<&mut Self>, raw: Raw<B>) -> Result<(), Self::Error> {
-        let op = match raw.frame.op {
+        let op = match raw.frame.opcode {
             Opcode::Continue => 0,
             Opcode::Text => 1,
             Opcode::Binary => 2,

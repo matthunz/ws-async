@@ -1,18 +1,22 @@
+use std::fmt;
 pub use ws_frame::Opcode;
 
 mod payload;
 pub use payload::Payload;
 
-#[derive(Debug)]
 pub struct Frame<P> {
-    pub op: Opcode,
+    pub opcode: Opcode,
     pub rsv: [bool; 3],
     pub payload: P,
 }
 
 impl<P> Frame<P> {
-    pub const fn new(op: Opcode, rsv: [bool; 3], payload: P) -> Self {
-        Self { op, rsv, payload }
+    pub const fn new(opcode: Opcode, rsv: [bool; 3], payload: P) -> Self {
+        Self {
+            opcode,
+            rsv,
+            payload,
+        }
     }
 
     pub const fn binary(payload: P) -> Self {
@@ -25,6 +29,15 @@ impl<P> Frame<P> {
 
     const fn new_default(op: Opcode, payload: P) -> Self {
         Self::new(op, [false; 3], payload)
+    }
+}
+
+impl<P> fmt::Debug for Frame<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Frame")
+            .field("opcode", &self.opcode)
+            .field("rsv", &self.rsv)
+            .finish()
     }
 }
 
