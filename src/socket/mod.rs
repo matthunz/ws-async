@@ -1,6 +1,6 @@
 use crate::frame::{Frame, Opcode, Payload, Raw};
 use bytes::{Buf, BufMut, BytesMut};
-use futures::{pin_mut, ready, Sink};
+use futures::{pin_mut, ready, Sink, SinkExt};
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -33,6 +33,15 @@ where
             },
             write_buf: BytesMut::new(),
         }
+    }
+
+    pub async fn send_frame<B: Buf>(&mut self, frame: Frame<B>) -> io::Result<()> {
+        self.send(Raw {
+            frame,
+            mask: None,
+            finished: true,
+        })
+        .await
     }
 }
 
