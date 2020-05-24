@@ -1,6 +1,6 @@
 use crate::frame::{Frame, Opcode, Payload, Raw};
 use bytes::{Buf, BufMut, BytesMut};
-use futures::{pin_mut, ready, Sink, SinkExt};
+use futures::{pin_mut, ready, Sink, SinkExt, StreamExt};
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -67,6 +67,55 @@ where
             finished: true,
         })
         .await
+    }
+
+    pub async fn send_masked<B: Buf>(
+        &mut self,
+        frame: Frame<B>,
+        mask: Option<u32>,
+    ) -> io::Result<()> {
+        self.send(Raw {
+            frame,
+            mask,
+            finished: true,
+        })
+        .await
+    }
+
+    pub async fn send_stream<B, P>(&mut self, frame: Frame<P>) -> io::Result<()>
+    where
+        P: Stream<Item = io::Result<B>> + Unpin,
+        B: Buf,
+    {
+        let mut payload = frame.payload;
+        let mut pending = None;
+
+        loop {
+            let buf = if let Some(pending) = pending.take() {
+                pending
+            } else {
+                if let Some(bytes_res) = payload.next().await {
+                    bytes_res?
+                } else {
+                    break;
+                }
+            };
+
+            let new_frame = Frame::new(frame.opcode, frame.rsv, buf);
+            let finished = if let Some(next) = payload.next().await {
+                pending = Some(next?);
+                false
+            } else {
+                true
+            };
+
+            self.send_frame(new_frame).await?;
+            if finished {
+                break;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -156,6 +205,7 @@ where
                 inner.read_buf.advance(*used);
 
                 let head = f.head.as_ref().unwrap();
+                // TODO handle finished
                 let (sender, payload) = Payload::shared(Shared {
                     inner: self.shared.inner.clone(),
                 });
