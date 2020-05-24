@@ -49,6 +49,11 @@ where
         }
     }
 
+    /// Returns a future that sends a masked `Frame` on the socket to the remote address to which it is connected.
+    pub async fn next_frame(&mut self) -> Option<io::Result<Frame<Payload<T>>>> {
+        self.next().await
+    }
+
     /// Send an unmasked `Frame` using [send_masked](Socket::send_masked).
     /// ```
     /// use tokio::net::TcpStream;
@@ -83,8 +88,7 @@ where
         .await
     }
 
-    /// Send an unmasked streaming `Frame` using [send_stream_masked](Socket::send_stream_masked).
-    /// A partial frame is sent for each item in the `Stream` until completion.
+    /// Send an unmasked streaming`Frame` using [send_stream_masked](Socket::send_stream_masked).
     pub async fn send_stream<B, P>(&mut self, frame: Frame<P>) -> io::Result<()>
     where
         P: Stream<Item = io::Result<B>> + Unpin,
@@ -93,6 +97,8 @@ where
         self.send_stream_masked(frame, None).await
     }
 
+    /// Send masked streaming `Frame` using [send_masked](Socket::send_masked).
+    /// A partial frame is sent for each item in the `Stream` until completion.
     pub async fn send_stream_masked<B, P>(
         &mut self,
         frame: Frame<P>,
